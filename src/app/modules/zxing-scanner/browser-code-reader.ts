@@ -170,10 +170,10 @@ export class BrowserCodeReader {
   public bindVideoSrc(videoElement: HTMLVideoElement, stream: MediaStream): void {
     // Older browsers may not have `srcObject`
     try {
-      // @NOTE Throws Exception if interrupted by a new loaded request
+      // @note Throws Exception if interrupted by a new loaded request
       videoElement.srcObject = stream;
     } catch (err) {
-      // @NOTE Avoid using this in new browsers, as it is going away.
+      // @note Avoid using this in new browsers, as it is going away.
       videoElement.src = window.URL.createObjectURL(stream);
     }
   }
@@ -200,7 +200,7 @@ export class BrowserCodeReader {
   private bindEvents(videoElement: HTMLVideoElement, callbackFn?: (result: Result) => any): void {
 
     if (typeof callbackFn !== 'undefined') {
-      this.videoPlayingEventListener = () => this.decodingStream = this.decodeWithDelay(this.timeBetweenScans)
+      this.videoPlayingEventListener = () => this.decodingStream = this.decodeStream(this.timeBetweenScans)
         .pipe(catchError((e, x) => this.handleDecodeStreamError(e, x)))
         .subscribe((x: Result) => callbackFn(x));
     }
@@ -271,20 +271,27 @@ export class BrowserCodeReader {
   /**
    * Opens a decoding stream.
    */
-  private decodeWithDelay(delay: number = 500): Observable<Result> {
+  private decodeStream(delay: number = 500): Observable<Result> {
     // The decoding stream.
     return Observable.create((observer: Subscriber<Result>) => {
-      // Creates on Subscribe.
-      const intervalId = setInterval(() => {
-        try {
-          observer.next(this.decode());
-        } catch (err) {
-          observer.error(err);
-        }
-      }, delay);
+
+      const timeoutId = this.decodeWithDelay(delay, observer);
+
       // Destroys on Unsubscribe.
-      return () => clearInterval(intervalId);
+      return () => clearTimeout(timeoutId);
     });
+  }
+
+  private decodeWithDelay(delay: number = 500, observer: Subscriber<Result>): number {
+
+    // solicita leitura
+    const result = this.decode();
+
+    // emite resultado
+    observer.next(result);
+
+    // next loop
+    return window.setTimeout(() => this.decodeWithDelay(delay, observer), delay);
   }
 
   /**
