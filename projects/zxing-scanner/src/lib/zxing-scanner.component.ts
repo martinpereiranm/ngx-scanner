@@ -17,7 +17,6 @@ import { Result, DecodeHintType, BarcodeFormat, ArgumentException } from '@zxing
 import { BrowserMultiFormatContinuousReader } from './browser-multi-format-continuous-reader';
 
 @Component({
-  // tslint:disable-next-line:component-selector
   selector: 'zxing-scanner',
   templateUrl: './zxing-scanner.component.html',
   styleUrls: ['./zxing-scanner.component.scss'],
@@ -57,14 +56,9 @@ export class ZXingScannerComponent implements AfterViewInit, OnDestroy, OnChange
   private isEnumerateDevicesSuported: boolean;
 
   /**
-   * List of enable video-input devices.
-   */
-  private videoInputDevices: MediaDeviceInfo[];
-
-  /**
    * If the user-agent allowed the use of the camera or not.
    */
-  private hasPermission: boolean;
+  private hasPermission: boolean | null;
 
   /**
    * Reference to the preview element, should be the `video` tag.
@@ -148,7 +142,7 @@ export class ZXingScannerComponent implements AfterViewInit, OnDestroy, OnChange
    * User device input
    */
   @Input()
-  set device(device: MediaDeviceInfo|null) {
+  set device(device: MediaDeviceInfo | null) {
 
     if (this.isAlreadyDefinedDevice(device)) {
       return;
@@ -277,13 +271,13 @@ export class ZXingScannerComponent implements AfterViewInit, OnDestroy, OnChange
   async askForPermission(): Promise<boolean> {
 
     if (!this.hasNavigator) {
-      console.error('zxing-scanner', 'askForPermission', 'Can\'t ask permission, navigator is not present.');
+      console.error('@zxing/ngx-scanner', 'Can\'t ask permission, navigator is not present.');
       this.setPermission(null);
       return this.hasPermission;
     }
 
     if (!this.isMediaDevicesSuported) {
-      console.error('zxing-scanner', 'askForPermission', 'Can\'t get user media, this is not supported.');
+      console.error('@zxing/ngx-scanner', 'Can\'t get user media, this is not supported.');
       this.setPermission(null);
       return this.hasPermission;
     }
@@ -297,37 +291,10 @@ export class ZXingScannerComponent implements AfterViewInit, OnDestroy, OnChange
       return this.handlePermissionException(err);
     }
 
-    let permission: boolean;
+    const permission = !!stream;
+    this.setPermission(permission);
 
-    try {
-
-      // Start stream so Browser can display its permission-dialog
-      this.codeReader.bindVideoSrc(this.previewElemRef.nativeElement, stream);
-
-      // After permission was granted, we can stop it again
-      stream.getVideoTracks().forEach(track => {
-        track.stop();
-      });
-
-      // should stop the opened stream
-      this.codeReader.unbindVideoSrc(this.previewElemRef.nativeElement);
-
-      // if the scripts lives until here, that's only one mean:
-
-      // permission granted
-      permission = true;
-      this.setPermission(permission);
-
-    } catch (err) {
-
-      console.error('zxing-scanner', 'askForPermission', err);
-
-      // permission aborted
-      permission = null;
-      this.setPermission(permission);
-    }
-
-    // Returns the event emitter, so the dev can subscribe to it
+    // Returns the permission
     return permission;
   }
 
@@ -377,7 +344,7 @@ export class ZXingScannerComponent implements AfterViewInit, OnDestroy, OnChange
     const refStatus = !this.setupPreviewRef(this.previewElemRef);
 
     if (refStatus) {
-      console.warn('zxing-scanner', 'Preview element not found!');
+      console.warn('@zxing/ngx-scanner', 'Preview element not found!');
       return;
     }
 
@@ -482,7 +449,13 @@ export class ZXingScannerComponent implements AfterViewInit, OnDestroy, OnChange
     const devices = await this.discoverVideoInputDevices();
 
     // stores discovered devices and updates information
-    this.setVideoInputDevices(devices);
+    if (devices && devices.length > 0) {
+      this.hasDevices.next(true);
+      this.camerasFound.next(devices);
+    } else {
+      this.hasDevices.next(false);
+      this.camerasNotFound.next();
+    }
 
     return devices;
   }
@@ -540,12 +513,12 @@ export class ZXingScannerComponent implements AfterViewInit, OnDestroy, OnChange
   private async discoverVideoInputDevices(): Promise<MediaDeviceInfo[]> {
 
     if (!this.hasNavigator) {
-      console.error('zxing-scanner', 'enumarateVideoDevices', 'Can\'t enumerate devices, navigator is not present.');
+      console.error('@zxing/ngx-scanner', 'enumarateVideoDevices', 'Can\'t enumerate devices, navigator is not present.');
       return;
     }
 
     if (!this.isEnumerateDevicesSuported) {
-      console.error('zxing-scanner', 'enumarateVideoDevices', 'Can\'t enumerate devices, method not supported.');
+      console.error('@zxing/ngx-scanner', 'enumarateVideoDevices', 'Can\'t enumerate devices, method not supported.');
       return;
     }
 
@@ -589,8 +562,7 @@ export class ZXingScannerComponent implements AfterViewInit, OnDestroy, OnChange
   private handlePermissionException(err: DOMException): boolean {
 
     // failed to grant permission to video input
-
-    console.warn('zxing-scanner', 'askForPermission', err);
+    console.error('@zxing/ngx-scanner', 'Error when asking for permission.', err);
 
     let permission: boolean;
 
@@ -741,19 +713,4 @@ export class ZXingScannerComponent implements AfterViewInit, OnDestroy, OnChange
     return this.permissionResponse;
   }
 
-  /**
-   * Sets the video input devices and the observables that depends on it.
-   */
-  private setVideoInputDevices(devices: MediaDeviceInfo[]) {
-
-    if (devices && devices.length > 0) {
-      this.hasDevices.next(true);
-      this.camerasFound.next(devices);
-    } else {
-      this.hasDevices.next(false);
-      this.camerasNotFound.next();
-    }
-
-    this.videoInputDevices = devices;
-  }
 }
