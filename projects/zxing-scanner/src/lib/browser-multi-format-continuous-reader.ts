@@ -17,6 +17,7 @@ import {
 } from 'rxjs';
 
 import { catchError } from 'rxjs/operators';
+import { startTimeRange } from '@angular/core/src/profile/wtf_impl';
 
 /**
  * Based on zxing-typescript BrowserCodeReader
@@ -37,6 +38,7 @@ export class BrowserMultiFormatContinuousReader extends ZXingBrowserMultiFormatR
    * Says if there's a torch available for the current device.
    */
   protected _torchAvailable = new BehaviorSubject<boolean>(undefined);
+  nextScanDelayId: NodeJS.Timeout;
 
   /**
    * Exposes _tochAvailable .
@@ -53,12 +55,12 @@ export class BrowserMultiFormatContinuousReader extends ZXingBrowserMultiFormatR
   /**
    * Starts the decoding from the current or a new video element.
    *
-   * @param callbackFn The callback to be executed after every scan attempt
+   * @param done The callback to be executed after every scan attempt
    * @param deviceId The device's to be used Id
    * @param videoElement A new video element
    */
   public async continuousDecodeFromInputVideoDevice(
-    callbackFn?: (result: Result) => any,
+    done?: (result: Result) => any,
     deviceId?: string,
     videoElement?: HTMLVideoElement
   ): Promise<void> {
@@ -85,26 +87,30 @@ export class BrowserMultiFormatContinuousReader extends ZXingBrowserMultiFormatR
       return;
     }
 
+    let stream: MediaStream;
+
     try {
-      const stream = await navigator
+      stream = await navigator
         .mediaDevices
         .getUserMedia(constraints);
-
-      this.startDecodeFromStream(stream, () => {
-
-        if (this.decodingStream) {
-          this.decodingStream.unsubscribe();
-        }
-
-        this.decodingStream = this.decodeWithDelay(this.timeBetweenScansMillis)
-          .pipe(catchError((e, x) => this.handleDecodeStreamError(e, x)))
-          .subscribe((x: Result) => callbackFn(x));
-      });
-
     } catch (err) {
       /* handle the error, or not */
       console.error(err);
     }
+
+
+    const observable = this.startDecodeFromStream(stream);
+
+    () => {
+
+      if (this.decodingStream) {
+        this.decodingStream.unsubscribe();
+      }
+
+      this.decodingStream = this.decodeWithDelay(this.timeBetweenScansMillis)
+        .pipe(catchError((e, x) => this.handleDecodeStreamError(e, x)))
+        .subscribe((x: Result) => done(x));
+    });
   }
 
   /**
@@ -160,20 +166,27 @@ export class BrowserMultiFormatContinuousReader extends ZXingBrowserMultiFormatR
   /**
    * Opens a decoding stream.
    */
-  protected decodeWithDelay(delay: number = 500): Observable<Result> {
-    // The decoding stream.
-    return Observable.create((observer: Subscriber<Result>) => {
-      // Creates on Subscribe.
-      const intervalId = setInterval(() => {
-        try {
-          observer.next(this.decode());
-        } catch (err) {
-          observer.error(err);
-        }
-      }, delay);
-      // Destroys on Unsubscribe.
-      return () => clearInterval(intervalId);
-    });
+  protected decodeWithStream(stream: BehaviorSubject<Result>): void {
+
+    if (stream.closed) {
+      clearTimeout(this.nextScanDelayId);
+      this.nextScanDelayId = undefined;
+    }
+
+    let result: Result;
+
+    try {
+      result = this.decode();
+      stream.next(result);
+    } catch (err) {
+      stream.error(err);
+    }
+
+    const timeout = !result ? 0 : this.timeBetweenScansMillis;
+    const next = () => this.decodeWithStream(stream);
+
+    // next decode call
+    this.nextScanDelayId = setTimeout(next, timeout);
   }
 
   /**
