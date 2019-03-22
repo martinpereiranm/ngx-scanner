@@ -2,7 +2,7 @@ import { Component, VERSION, OnInit, ViewChild } from '@angular/core';
 
 import { ZXingScannerComponent } from './modules/zxing-scanner/zxing-scanner.component';
 
-import { Result } from '@zxing/library';
+import { Result, BarcodeFormat } from '@zxing/library';
 
 @Component({
   selector: 'app-root',
@@ -23,6 +23,8 @@ export class AppComponent implements OnInit {
 
   availableDevices: MediaDeviceInfo[];
   currentDevice: MediaDeviceInfo;
+
+  allowedFormats = [BarcodeFormat.QR_CODE];
 
   ngOnInit(): void {
 
@@ -51,7 +53,7 @@ export class AppComponent implements OnInit {
   }
 
   handleQrCodeResult(resultString: string) {
-    console.debug('Result: ', resultString);
+    console.log('Result: ', resultString);
     this.qrResultString = resultString;
   }
 

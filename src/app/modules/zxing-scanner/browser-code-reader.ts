@@ -110,7 +110,8 @@ export class BrowserCodeReader {
     deviceId?: string,
     videoElement?: HTMLVideoElement
   ): Promise<void> {
-
+    
+    console.log("Omar - decodeFromInputVideoDevice");
     this.reset();
 
     this.prepareVideoElement(videoElement);
@@ -137,6 +138,7 @@ export class BrowserCodeReader {
       const stream = await navigator
         .mediaDevices
         .getUserMedia(constraints);
+
 
       this.startDecodeFromStream(stream, callbackFn);
 
@@ -200,9 +202,10 @@ export class BrowserCodeReader {
   private bindEvents(videoElement: HTMLVideoElement, callbackFn?: (result: Result) => any): void {
 
     if (typeof callbackFn !== 'undefined') {
+      console.log("omar - callbackFN is NOT undefined")
       this.videoPlayingEventListener = () => this.decodingStream = this.decodeWithDelay(this.timeBetweenScans)
         .pipe(catchError((e, x) => this.handleDecodeStreamError(e, x)))
-        .subscribe((x: Result) => callbackFn(x));
+        .subscribe((x: Result) => {console.log("x is result"); callbackFn(x);});
     }
 
     videoElement.addEventListener('playing', this.videoPlayingEventListener);
@@ -258,13 +261,13 @@ export class BrowserCodeReader {
    * @param videoElement The HTMLVideoElement to be set.
    */
   private prepareVideoElement(videoElement?: HTMLVideoElement): void {
-
+    console.log("prepareVideoElement called");
     if (!videoElement && typeof document !== 'undefined') {
+      console.log("if statement activated");
       videoElement = document.createElement('video');
       videoElement.width = 200;
       videoElement.height = 200;
     }
-
     this.videoElement = videoElement;
   }
 
@@ -329,12 +332,27 @@ export class BrowserCodeReader {
    * @param mediaElement HTML element containing drawable image source.
    */
   private createBinaryBitmap(mediaElement: HTMLVideoElement | HTMLImageElement): BinaryBitmap {
-
     if (undefined === this.canvasElementContext) {
       this.prepareCaptureCanvas();
     }
+    // I think here we need to limit the size of the mediaElement here. Take a subset of it!
 
-    this.canvasElementContext.drawImage(mediaElement, 0, 0);
+    let canvas = <HTMLCanvasElement> document.getElementById("imageCanvas");
+    var ctx = canvas.getContext("2d");
+
+    // this.canvasElementContext.drawImage(mediaElement, 0, 0);
+    let sx=0;
+    let sy=140;
+    let sWidth=mediaElement.clientWidth;
+    let sHeight=400;
+    let dx=0;
+    let dy=0;
+    let dWidth=mediaElement.clientWidth/2;
+    let dHeight=200;
+    // Omar: As a sanity test, let's try to put this on the screen - that way, we can confirm
+    //   that it is only grabbing the correc tsection
+    this.canvasElementContext.drawImage(mediaElement, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+    // ctx.drawImage(mediaElement, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
 
     const luminanceSource = new HTMLCanvasElementLuminanceSource(this.canvasElement);
     const hybridBinarizer = new HybridBinarizer(luminanceSource);
@@ -362,7 +380,7 @@ export class BrowserCodeReader {
 
     if (typeof this.videoElement !== 'undefined') {
       width = this.videoElement.videoWidth;
-      height = this.videoElement.videoHeight;
+      height = 200; // this.videoElement.videoHeight;
     }
 
     if (typeof this.imageElement !== 'undefined') {

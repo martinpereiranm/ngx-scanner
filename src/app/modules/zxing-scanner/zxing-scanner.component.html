@@ -1,8 +1,15 @@
-<video #preview [style.object-fit]="previewFitMode">
-  <p>
-    Your browser does not support this feature, please try to upgrade it.
-  </p>
-  <p>
-    Seu navegador não suporta este recurso, por favor tente atualizá-lo.
-  </p>
-</video>
+<div id="container">
+  <div>
+    <div class="buffer" id="top"></div>
+    <video #preview [style.object-fit]="previewFitMode">
+      <p>
+        Your browser does not support this feature, please try to upgrade it.
+      </p>
+      <p>
+        Seu navegador não suporta este recurso, por favor tente atualizá-lo.
+      </p>
+    </video>
+    <div class="buffer" id="bottom"></div>
+  </div>
+  <canvas id="imageCanvas"></canvas>
+</div>
