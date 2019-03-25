@@ -1,6 +1,8 @@
 <div id="container">
   <div>
-    <div class="buffer" id="top"></div>
+    <div class="buffer" id="top">
+      <!-- Locating... -->
+    </div>
     <video #preview [style.object-fit]="previewFitMode">
       <p>
         Your browser does not support this feature, please try to upgrade it.
@@ -9,7 +11,27 @@
         Seu navegador não suporta este recurso, por favor tente atualizá-lo.
       </p>
     </video>
-    <div class="buffer" id="bottom"></div>
+    <svg height="480" width="100%">
+      <!-- Locating line -->
+      <g *ngIf="isLocating">
+        <line x1="0" y1="240" x2="1000" y2="240" style="stroke:rgb(255,0,0);stroke-width:1" />
+      </g>
+      <!-- Invalid Line -->
+      <g *ngIf="isInvalid">
+        <line x1="0" y1="210" x2="1000" y2="210" style="stroke:rgb(255,0,0);stroke-width:1" />
+        <line x1="0" y1="270" x2="1000" y2="270" style="stroke:rgb(255,0,0);stroke-width:1" />
+      </g>
+      <!-- Valid line -->
+      <g *ngIf="isCaptured">
+        <line x1="0" y1="210" x2="1000" y2="210" style="stroke:rgb(0,102,0);stroke-width:1" />
+        <line x1="0" y1="270" x2="1000" y2="270" style="stroke:rgb(0,102,0);stroke-width:1" />
+      </g>
+    </svg>
+    <div class="buffer" id="bottom">
+      <!-- <span></span>
+        Scan de QR Code or the Serial Number barcode<br>
+        found on the product label -->
+    </div>
   </div>
   <canvas id="imageCanvas"></canvas>
 </div>

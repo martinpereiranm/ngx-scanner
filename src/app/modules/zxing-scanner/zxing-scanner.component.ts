@@ -25,6 +25,10 @@ import { BrowserMultiFormatReader } from './browser-multi-format-reader';
 })
 export class ZXingScannerComponent implements AfterViewInit, OnDestroy, OnChanges {
 
+  isLocating = false;
+  isCaptured = false;
+  isInvalid = false;
+
   /**
    * Supported Hints map.
    */
@@ -250,8 +254,10 @@ export class ZXingScannerComponent implements AfterViewInit, OnDestroy, OnChange
     }
 
     if (changes.device) {
+      this.ClearStatuses();
       if (this.device) {
         this.changeDevice(this.device);
+        this.isLocating = true;
       } else {
         console.warn('zxing-scanner', 'device', 'Unselected device.');
         this.resetCodeReader();
@@ -491,10 +497,13 @@ export class ZXingScannerComponent implements AfterViewInit, OnDestroy, OnChange
     try {
 
       this.codeReader.decodeFromInputVideoDevice((result: Result) => {
-
         if (result) {
+          this.ClearStatuses();
+          this.isCaptured = true;
           this.dispatchScanSuccess(result);
         } else {
+          this.ClearStatuses();
+          this.isInvalid = true;
           this.dispatchScanFailure();
         }
 
@@ -635,5 +644,11 @@ export class ZXingScannerComponent implements AfterViewInit, OnDestroy, OnChange
     return typeof format === 'string'
       ? BarcodeFormat[format.trim().toUpperCase()]
       : format;
+  }
+
+  private ClearStatuses() {
+    this.isCaptured = false;
+    this.isInvalid = false;
+    this.isLocating = false;
   }
 }
